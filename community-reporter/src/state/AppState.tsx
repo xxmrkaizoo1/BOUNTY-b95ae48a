@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   mockReports,
   mockUpdates,
@@ -10,6 +10,13 @@ import {
 } from "../data/mockReports";
 
 const STATUS_FLOW: ReportStatus[] = ["Open", "Acknowledged", "In Progress", "Closed"];
+const STORAGE_KEY = "community-reporter-state";
+
+type StoredState = {
+  reports: Report[];
+  updates: Update[];
+  userId: string;
+};
 
 type ActivityItem = {
   id: string;
@@ -67,17 +74,52 @@ function nextId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function loadStoredState(): StoredState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredState;
+    if (!parsed || !Array.isArray(parsed.reports) || !Array.isArray(parsed.updates)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(mockUsers[0]);
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [updates, setUpdates] = useState<Update[]>(mockUpdates);
+  const storedState = loadStoredState();
+  const initialUser =
+    storedState && storedState.userId
+      ? mockUsers.find((item) => item.id === storedState.userId) ?? mockUsers[0]
+      : mockUsers[0];
+  const initialReports = storedState?.reports ?? mockReports;
+  const initialUpdates = storedState?.updates ?? mockUpdates;
+
+  const [user, setUser] = useState<User>(initialUser);
+  const [reports, setReports] = useState<Report[]>(initialReports);
+  const [updates, setUpdates] = useState<Update[]>(initialUpdates);
   const [follows, setFollows] = useState<Set<string>>(
-    new Set(mockReports.filter((report) => report.followers.includes(user.id)).map((r) => r.id))
+    new Set(
+      initialReports.filter((report) => report.followers.includes(initialUser.id)).map((r) => r.id)
+    )
   );
   const [lastUpdateAt, setLastUpdateAt] = useState<number>(0);
   const [rapidCount, setRapidCount] = useState<number>(0);
 
   const isAuthenticated = user.id !== "guest";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload: StoredState = {
+      reports,
+      updates,
+      userId: user.id,
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }, [reports, updates, user.id]);
 
   function signIn() {
     const nextUser = mockUsers[1];
