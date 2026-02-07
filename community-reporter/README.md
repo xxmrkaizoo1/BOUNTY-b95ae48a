@@ -1,73 +1,35 @@
-# React + TypeScript + Vite
+# Local Community Problem Reporter (PWA)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight community reporting tool where residents can report local issues, follow progress, and confirm when fixes land. Built with React, TypeScript, Tailwind, and a simple in-memory data layer to demonstrate flows quickly.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Google sign-in (mock)** with profile details, points, and badges.
+- **Create reports** with title, description, category, photo URL, and location.
+- **Public feed + detail pages** with status flow: Open → Acknowledged → In Progress → Closed.
+- **Follow system** with auto-follow on report creation.
+- **Gamification** (points + badges): First Report, Helper (5 updates/comments), Resolver (2 confirmed resolutions).
+- **Public updates/comments** with light rate limiting and community confirmations on closures.
+- **Search + filters** by status and category.
+- **Moderation tools**: flag reports, hide/unhide reports, lock comments, and admin dashboard view.
+- **Duplicate handling** (admin-only) to redirect reports.
+- **PWA ready** with manifest + service worker cache.
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Assumptions
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Authentication is mocked ("Sign in with Google" swaps the demo user).
+- Data is stored in-memory for the demo; connect to a backend for persistence.
+- Admin access is also mocked (switch to the admin user in `mockReports.ts` if needed).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Project Structure
+
+- `src/pages` — Feed, report detail, new report, profile, admin dashboard.
+- `src/state/AppState.tsx` — Shared state + actions (reports, follows, updates, gamification).
+- `public/` — PWA manifest + service worker.
