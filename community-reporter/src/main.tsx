@@ -9,6 +9,7 @@ import FeedPage from "./pages/FeedPages";
 import NewReportPage from "./pages/NewReportPage";
 import ReportDetailPage from "./pages/ReportDetailPage";
 import ProfilePage from "./pages/ProfilePage";
+import AdminPage from "./pages/AdminPage";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -20,12 +21,20 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/new" element={<NewReportPage />} />
             <Route path="/report/:id" element={<ReportDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </Layout>
       </AppStateProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js");
+  });
+}
+
 
 
 // import { StrictMode } from 'react'
