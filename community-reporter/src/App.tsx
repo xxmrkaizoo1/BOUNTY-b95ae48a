@@ -1,9 +1,13 @@
 export default function App() {
+
   const stats = [
     { label: "Total reports", value: "128" },
     { label: "Open", value: "24" },
     { label: "In progress", value: "11" },
     { label: "Closed", value: "93" },
+
+
+
   ];
 
   const updates = [
@@ -312,4 +316,6 @@ export default function App() {
       </div>
     </div>
   );
+
+
 }

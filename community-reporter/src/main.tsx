@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import "./index.css";
+import "./index.css"; 
+
 
 import { AppStateProvider } from "./state/AppState";
 import Layout from "./components/Layout";
