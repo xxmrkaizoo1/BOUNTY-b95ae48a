@@ -64,12 +64,18 @@ export default function App() {
     },
   ];
 
+  const responders = [
+    { name: "Ward 3 Response", members: "12 responders", tone: "from-emerald-500/20" },
+    { name: "Night Safety Crew", members: "7 responders", tone: "from-indigo-500/20" },
+    { name: "Cleanup Volunteers", members: "19 responders", tone: "from-amber-500/20" },
+  ];
+
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen w-full max-w-none flex-col gap-8 px-4 py-8 sm:px-6 lg:px-12">
-        <nav className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-900/70 px-6 py-5 backdrop-blur">
+        <nav className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-900/90 px-6 py-5 shadow-xl shadow-blue-900/20 backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-xl shadow-lg shadow-blue-500/20">
               📣
             </div>
             <div>
@@ -89,9 +95,17 @@ export default function App() {
           </div>
         </nav>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-8 shadow-2xl shadow-blue-900/30">
-            <p className="text-xs uppercase tracking-[0.4em] text-blue-300">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">
+                Live civic updates
+              </span>
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                96% verified
+              </span>
+            </div>
+            <p className="mt-5 text-xs uppercase tracking-[0.4em] text-blue-300">
               Neighborhood overview
             </p>
             <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">
@@ -107,6 +121,9 @@ export default function App() {
               </button>
               <button className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white">
                 View response map
+              </button>
+              <button className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-6 py-3 text-sm font-semibold text-emerald-200 transition hover:border-emerald-300/60">
+                Join volunteer channel
               </button>
             </div>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -153,6 +170,28 @@ export default function App() {
               </p>
               <div className="mt-4 grid h-48 place-items-center rounded-2xl border border-dashed border-white/15 bg-slate-950/40 text-sm text-slate-400">
                 Interactive map preview
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                Response squads
+              </p>
+              <div className="mt-4 space-y-3">
+                {responders.map((responder) => (
+                  <div
+                    key={responder.name}
+                    className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">{responder.name}</p>
+                      <span
+                        className={`rounded-full bg-gradient-to-r ${responder.tone} to-transparent px-3 py-1 text-xs text-slate-200`}
+                      >
+                        {responder.members}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -222,7 +261,7 @@ export default function App() {
                 {updates.map((update) => (
                   <article
                     key={update.title}
-                    className="rounded-2xl border border-white/10 bg-slate-950/40 p-5 transition hover:border-blue-400/40"
+                    className="rounded-2xl border border-white/10 bg-slate-950/40 p-5 transition hover:border-blue-400/40 hover:bg-slate-900/50"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -253,6 +292,14 @@ export default function App() {
               <p className="mt-3 text-sm text-slate-300">
                 Stay aligned with the latest verified updates in your area.
               </p>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+                  Next briefing call: <span className="font-semibold text-white">4:30 PM</span>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+                  Priority zones: <span className="font-semibold text-white">Ward 3, Ward 7</span>
+                </div>
+              </div>
               <button className="mt-6 w-full rounded-full bg-blue-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-400">
                 Share update
               </button>
