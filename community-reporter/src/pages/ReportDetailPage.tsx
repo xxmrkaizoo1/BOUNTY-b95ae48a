@@ -36,13 +36,14 @@ export default function ReportDetailPage() {
     );
   }
 
+  const reportId = report.id;
   const following = isFollowing(report.id);
   const canManage = user.role === "admin" || user.id === report.creatorId;
   const hasConfirmed = report.resolutionConfirmations.includes(user.id);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const result = addUpdate(report.id, message);
+    const result = addUpdate(reportId, message);
     if (!result.ok) {
       setError(result.message || "Unable to post update.");
       return;
@@ -53,7 +54,7 @@ export default function ReportDetailPage() {
 
   function handleDuplicate() {
     if (!duplicateOf) return;
-    markDuplicate(report.id, duplicateOf);
+    markDuplicate(reportId, duplicateOf);
   }
 
   return (
