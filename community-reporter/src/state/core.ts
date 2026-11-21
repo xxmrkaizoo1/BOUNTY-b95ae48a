@@ -1,7 +1,10 @@
 import { createContext } from "react";
-import type { Report, ReportStatus, Update, User } from "../data/mockReports";
+import type { Coords, Report, ReportStatus, Update, User } from "../data/mockReports";
 
 export const STATUS_FLOW: ReportStatus[] = ["Open", "Acknowledged", "In Progress", "Closed"];
+
+/** Client-side limits (kept below the limits enforced in firestore.rules). */
+export const LIMITS = { title: 120, description: 2000, comment: 1000, location: 160 };
 
 export const GUEST_USER: User = {
   id: "guest",
@@ -10,10 +13,14 @@ export const GUEST_USER: User = {
   role: "member",
 };
 
+export function fallbackAvatar(seed: string) {
+  return `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(seed)}`;
+}
+
 export type ActivityItem = {
   id: string;
   label: string;
-  createdAt: string;
+  createdAtMs: number;
   reportId?: string;
 };
 
@@ -23,6 +30,7 @@ export type CreateReportInput = {
   category: Report["category"];
   photoUrl?: string;
   location?: string;
+  coords?: Coords | null;
 };
 
 export type ActionResult = { ok: boolean; message?: string };
@@ -39,6 +47,17 @@ export type AppState = {
   isAuthenticated: boolean;
   signIn: () => void;
   signOut: () => void;
+  /** Demo mode only: switch between mock users (e.g. to try the admin tools). */
+  demoUsers?: User[];
+  switchDemoUser?: (userId: string) => void;
+  /** Welcome tour: shown automatically on a user's first sign-in. */
+  showTour: boolean;
+  /** Close the tour and remember it was seen. */
+  finishTour: () => void;
+  /** Open the tour again (e.g. from the profile page). */
+  startTour: () => void;
+  /** Public profiles, used to show who posted reports and comments. */
+  getUser: (userId: string) => User;
   reports: Report[];
   updates: Update[];
   points: number;
@@ -49,14 +68,25 @@ export type AppState = {
   toggleFollow: (reportId: string) => void;
   /** Returns null when the report could not be created (e.g. not signed in). */
   createReport: (input: CreateReportInput) => Report | null;
+  /** Creator or admin: edit the report's content. */
+  updateReport: (reportId: string, input: CreateReportInput) => void;
+  /** Creator or admin: permanently delete the report. */
+  deleteReport: (reportId: string) => void;
   getReportUpdates: (reportId: string) => Update[];
   addUpdate: (reportId: string, text: string, type?: Update["type"]) => ActionResult;
   changeStatus: (reportId: string, nextStatus: ReportStatus) => void;
   confirmResolution: (reportId: string) => void;
-  flagReport: (reportId: string) => void;
+  /** Flag a report for moderators, or remove your flag. */
+  toggleFlag: (reportId: string) => void;
+  /** Admin: clear all flags after review. */
+  dismissFlags: (reportId: string) => void;
   markDuplicate: (reportId: string, duplicateOfId: string) => void;
   toggleHideReport: (reportId: string) => void;
   toggleLockComments: (reportId: string) => void;
+  /** Admin: add the sample neighbourhood dataset (demo mode: reset to it). */
+  loadSampleData: () => Promise<void>;
+  /** Admin: remove all sample reports and their updates. */
+  clearSampleData: () => Promise<void>;
 };
 
 export const AppStateContext = createContext<AppState | null>(null);
@@ -69,6 +99,16 @@ export function formatDateTime(value = new Date()) {
   return value.toISOString().replace("T", " ").slice(0, 16);
 }
 
+/** Milliseconds for a report, falling back to the legacy date string. */
+export function reportTimeMs(report: Pick<Report, "createdAt" | "createdAtMs">) {
+  return report.createdAtMs ?? Date.parse(report.createdAt);
+}
+
+/** Milliseconds for an update; legacy strings are "YYYY-MM-DD HH:mm" in UTC. */
+export function updateTimeMs(update: Pick<Update, "createdAt" | "createdAtMs">) {
+  return update.createdAtMs ?? Date.parse(`${update.createdAt.replace(" ", "T")}Z`);
+}
+
 export function nextId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -76,6 +116,10 @@ export function nextId(prefix: string) {
 export function cleanOptional(value?: string) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+export function canManageReport(user: User, report: Report) {
+  return user.role === "admin" || user.id === report.creatorId;
 }
 
 /** Simple client-side rate limit: max 5 posts within 30s bursts. */
@@ -97,35 +141,71 @@ export function createRateLimiter() {
   };
 }
 
-export function computePoints(reports: Report[], updates: Update[], userId: string) {
+/** Confirmations from people other than the reporter. */
+export function communityConfirmations(report: Report) {
+  return report.resolutionConfirmations.filter((id) => id !== report.creatorId).length;
+}
+
+export const RESOLVED_CONFIRMATIONS = 2;
+
+export function computeStats(reports: Report[], updates: Update[], userId: string) {
   const userReports = reports.filter((report) => report.creatorId === userId);
-  const userUpdates = updates.filter((update) => update.userId === userId);
-  const confirmations = reports.filter((report) =>
-    report.resolutionConfirmations.includes(userId)
-  );
-  const resolvedByUser = userReports.filter(
-    (report) => report.resolutionConfirmations.length >= 2
-  );
-  return (
-    userReports.length * 10 +
-    userUpdates.length * 2 +
-    confirmations.length * 5 +
-    resolvedByUser.length * 20
-  );
+  return {
+    reports: userReports.length,
+    comments: updates.filter((update) => update.userId === userId).length,
+    confirmations: reports.filter((report) => report.resolutionConfirmations.includes(userId))
+      .length,
+    resolved: userReports.filter(
+      (report) => communityConfirmations(report) >= RESOLVED_CONFIRMATIONS
+    ).length,
+  };
+}
+
+export const POINTS_PER_LEVEL = 50;
+
+/** Level from points: every 50 XP is a new level. */
+export function levelInfo(points: number) {
+  return {
+    level: Math.floor(points / POINTS_PER_LEVEL) + 1,
+    into: points % POINTS_PER_LEVEL,
+    needed: POINTS_PER_LEVEL,
+  };
+}
+
+/** Rank title shown next to a player's name. */
+export function rankTitle(level: number) {
+  if (level >= 10) return "Legend";
+  if (level >= 7) return "Guardian";
+  if (level >= 5) return "Hero";
+  if (level >= 3) return "Scout";
+  return "Rookie";
+}
+
+export function computePoints(reports: Report[], updates: Update[], userId: string) {
+  const stats = computeStats(reports, updates, userId);
+  return stats.reports * 10 + stats.comments * 2 + stats.confirmations * 5 + stats.resolved * 20;
+}
+
+export const BADGES = [
+  { name: "First Report", icon: "📝", goal: 1, detail: "Submit your first community report." },
+  { name: "Helper", icon: "🤝", goal: 5, detail: "Post 5 updates or comments." },
+  { name: "Resolver", icon: "🏅", goal: 2, detail: "2 of your reports confirmed fixed by neighbours." },
+] as const;
+
+export function badgeProgress(reports: Report[], updates: Update[], userId: string) {
+  const stats = computeStats(reports, updates, userId);
+  const values = [stats.reports, stats.comments, stats.resolved];
+  return BADGES.map((badge, index) => ({
+    ...badge,
+    value: Math.min(values[index], badge.goal),
+    earned: values[index] >= badge.goal,
+  }));
 }
 
 export function computeBadges(reports: Report[], updates: Update[], userId: string) {
-  const userReports = reports.filter((report) => report.creatorId === userId);
-  const userUpdates = updates.filter((update) => update.userId === userId);
-  const resolvedByUser = userReports.filter(
-    (report) => report.resolutionConfirmations.length >= 2
-  );
-
-  const earned: string[] = [];
-  if (userReports.length >= 1) earned.push("First Report");
-  if (userUpdates.length >= 5) earned.push("Helper");
-  if (resolvedByUser.length >= 2) earned.push("Resolver");
-  return earned;
+  return badgeProgress(reports, updates, userId)
+    .filter((badge) => badge.earned)
+    .map((badge) => badge.name);
 }
 
 export function computeActivity(
@@ -139,8 +219,8 @@ export function computeActivity(
     .forEach((report) => {
       items.push({
         id: `activity-${report.id}`,
-        label: `Created report: ${report.title}`,
-        createdAt: report.createdAt,
+        label: `Reported “${report.title}”`,
+        createdAtMs: reportTimeMs(report),
         reportId: report.id,
       });
     });
@@ -149,25 +229,14 @@ export function computeActivity(
     .filter((update) => update.userId === userId)
     .forEach((update) => {
       const reportTitle = reports.find((report) => report.id === update.reportId)?.title;
-      const actionLabel = update.type === "update" ? "Posted update" : "Commented";
+      const actionLabel = update.type === "update" ? "Posted an update" : "Commented";
       items.push({
         id: `activity-${update.id}`,
-        label: `${actionLabel}${reportTitle ? ` on ${reportTitle}` : ""}`,
-        createdAt: update.createdAt,
+        label: `${actionLabel}${reportTitle ? ` on “${reportTitle}”` : ""}`,
+        createdAtMs: updateTimeMs(update),
         reportId: update.reportId,
       });
     });
 
-  reports.forEach((report) => {
-    if (report.resolutionConfirmations.includes(userId)) {
-      items.push({
-        id: `activity-confirm-${report.id}`,
-        label: `Confirmed resolution for ${report.title}`,
-        createdAt: report.createdAt,
-        reportId: report.id,
-      });
-    }
-  });
-
-  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6);
+  return items.sort((a, b) => b.createdAtMs - a.createdAtMs).slice(0, 8);
 }

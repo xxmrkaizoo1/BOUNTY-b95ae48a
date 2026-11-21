@@ -1,49 +1,43 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import "./index.css"; 
-
+import "./index.css";
 
 import { AppStateProvider } from "./state/AppState";
-import Layout from "./components/Layout";
+import Layout, { PageSpinner } from "./components/Layout";
 import FeedPage from "./pages/FeedPages";
-import NewReportPage from "./pages/NewReportPage";
-import ReportDetailPage from "./pages/ReportDetailPage";
-import ProfilePage from "./pages/ProfilePage";
-import AdminPage from "./pages/AdminPage";
+
+// Less-visited pages load on demand to keep the first load small.
+const NewReportPage = lazy(() => import("./pages/NewReportPage"));
+const ReportDetailPage = lazy(() => import("./pages/ReportDetailPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AppStateProvider>
         <Layout>
-          <Routes>
-            <Route path="/" element={<FeedPage />} />
-            <Route path="/new" element={<NewReportPage />} />
-            <Route path="/report/:id" element={<ReportDetailPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/admin" element={<AdminPage />} />
-          </Routes>
+          <Suspense fallback={<PageSpinner />}>
+            <Routes>
+              <Route path="/" element={<FeedPage />} />
+              <Route path="/new" element={<NewReportPage />} />
+              <Route path="/report/:id" element={<ReportDetailPage />} />
+              <Route path="/report/:id/edit" element={<NewReportPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
         </Layout>
       </AppStateProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js");
   });
 }
-
-
-// import { StrictMode } from 'react'
-// import { createRoot } from 'react-dom/client'
-// import './index.css';
-// import App from './App.tsx'
-
-// createRoot(document.getElementById('root')!).render(
-//   <StrictMode>
-//     <App />
-//   </StrictMode>,
-// )

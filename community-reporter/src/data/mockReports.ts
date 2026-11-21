@@ -15,6 +15,8 @@ export type User = {
   role: "member" | "admin";
 };
 
+export type Coords = { lat: number; lng: number };
+
 export type Report = {
   id: string;
   title: string;
@@ -32,6 +34,10 @@ export type Report = {
   duplicateOf?: string;
   resolutionConfirmations: string[];
   createdAtMs?: number;
+  updatedAtMs?: number;
+  coords?: Coords;
+  /** Seeded demo content (shown with a "Sample" tag; removable by admins). */
+  sample?: boolean;
 };
 
 export type Update = {
@@ -42,6 +48,7 @@ export type Update = {
   createdAt: string;
   type: "update" | "comment";
   createdAtMs?: number;
+  sample?: boolean;
 };
 
 export const mockUsers: User[] = [
@@ -63,83 +70,9 @@ export const mockUsers: User[] = [
     avatar: "https://api.dicebear.com/7.x/thumbs/svg?seed=admin",
     role: "admin",
   },
-];
-
-export const mockReports: Report[] = [
-  {
-    id: "r1",
-    title: "Pothole near school gate",
-    description: "Big pothole, dangerous for motorcycles during rush hour.",
-    category: "Road",
-    status: "Open",
-    createdAt: "2026-02-07",
-    creatorId: "u1",
-    photoUrl:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=60",
-    location: "Jalan Mawar 4, Section 2",
-    followers: ["u1"],
-    flaggedBy: [],
-    hidden: false,
-    commentsLocked: false,
-    resolutionConfirmations: [],
-  },
-  {
-    id: "r2",
-    title: "Street light not working",
-    description: "Dark at night, safety issue for pedestrians.",
-    category: "Lighting",
-    status: "In Progress",
-    createdAt: "2026-02-06",
-    creatorId: "u1",
-    location: "Taman Melati",
-    followers: ["u1"],
-    flaggedBy: ["admin"],
-    hidden: false,
-    commentsLocked: false,
-    resolutionConfirmations: ["u1"],
-  },
-  {
-    id: "r3",
-    title: "Overflowing trash bins",
-    description: "Bins are overflowing and attracting stray animals.",
-    category: "Trash",
-    status: "Acknowledged",
-    createdAt: "2026-02-05",
-    creatorId: "admin",
-    photoUrl:
-      "https://images.unsplash.com/photo-1484659619207-9165d119dafe?auto=format&fit=crop&w=900&q=60",
-    location: "Pasar Malam Jalan 1",
-    followers: ["admin"],
-    flaggedBy: [],
-    hidden: false,
-    commentsLocked: false,
-    resolutionConfirmations: [],
-  },
-];
-
-export const mockUpdates: Update[] = [
-  {
-    id: "u1",
-    reportId: "r1",
-    userId: "u1",
-    text: "I contacted the town council hotline, they said they will inspect this week.",
-    createdAt: "2026-02-07 10:12",
-    type: "update",
-  },
-  {
-    id: "u2",
-    reportId: "r2",
-    userId: "admin",
-    text: "Technician assigned, replacement part ordered.",
-    createdAt: "2026-02-06 18:30",
-    type: "update",
-  },
-  {
-    id: "u3",
-    reportId: "r3",
-    userId: "u1",
-    text: "Multiple bins are already full by noon. Need more frequent collection.",
-    createdAt: "2026-02-05 12:45",
-    type: "comment",
-  },
+  { id: "u2", name: "Daniel Tan", avatar: "https://api.dicebear.com/7.x/thumbs/svg?seed=daniel", role: "member" },
+  { id: "u3", name: "Priya Raj", avatar: "https://api.dicebear.com/7.x/thumbs/svg?seed=priya", role: "member" },
+  { id: "u4", name: "Hafiz Rahman", avatar: "https://api.dicebear.com/7.x/thumbs/svg?seed=hafiz", role: "member" },
+  { id: "u5", name: "Mei Ling", avatar: "https://api.dicebear.com/7.x/thumbs/svg?seed=meiling", role: "member" },
+  { id: "u6", name: "Siti Aminah", avatar: "https://api.dicebear.com/7.x/thumbs/svg?seed=siti", role: "member" },
 ];

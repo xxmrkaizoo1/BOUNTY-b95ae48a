@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed": "node --env-file=.env scripts/seed-firebase.ts"
   },
   "dependencies": {
     "firebase": "^13.4.0",

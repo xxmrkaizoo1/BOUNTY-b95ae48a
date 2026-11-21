@@ -28,6 +28,17 @@ service cloud.firestore {
       return s in ['Open', 'Acknowledged', 'In Progress', 'Closed'];
     }
 
+    // Content fields shared by create and edit. Photos are stored inline as
+    // compressed data URLs, so they must stay well under the 1 MiB doc limit.
+    function validContent(d) {
+      return d.title is string && d.title.size() > 0 && d.title.size() <= 200
+        && d.description is string && d.description.size() <= 5000
+        && d.category in ['Road', 'Trash', 'Lighting', 'Water', 'Safety', 'Other']
+        && (!('photoUrl' in d) || (d.photoUrl is string && d.photoUrl.size() <= 900000))
+        && (!('location' in d) || (d.location is string && d.location.size() <= 200))
+        && (!('coords' in d) || (d.coords.lat is number && d.coords.lng is number));
+    }
+
     // Profiles. Role can only be changed from the Firebase console / Admin SDK.
     match /users/{uid} {
       allow read: if true;
@@ -38,9 +49,16 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if true;
+      // Hidden reports are only visible to admins and the person who wrote them.
+      allow read: if resource.data.hidden == false
+        || isAdmin()
+        || (signedIn() && resource.data.creatorId == request.auth.uid);
 
       allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+             'title', 'description', 'category', 'status', 'createdAt', 'createdAtMs',
+             'creatorId', 'photoUrl', 'location', 'coords', 'followers', 'flaggedBy',
+             'hidden', 'commentsLocked', 'resolutionConfirmations', 'sample'])
         && request.resource.data.creatorId == request.auth.uid
         && request.resource.data.status == 'Open'
         && request.resource.data.hidden == false
@@ -48,31 +66,35 @@ service cloud.firestore {
         && request.resource.data.followers == [request.auth.uid]
         && request.resource.data.flaggedBy == []
         && request.resource.data.resolutionConfirmations == []
-        && request.resource.data.title is string
-        && request.resource.data.title.size() > 0
-        && request.resource.data.title.size() <= 200
-        && request.resource.data.description is string
-        && request.resource.data.description.size() <= 5000;
+        // Optional tag for demo content (lets admins bulk-remove it later).
+        && (!('sample' in request.resource.data) || request.resource.data.sample == true)
+        && validContent(request.resource.data);
 
       allow update: if isAdmin()
-        // Creator can move their report through the status flow.
+        // Creator can edit their report's content and move it through the status flow.
         || (signedIn()
             && resource.data.creatorId == request.auth.uid
-            && changedKeys().hasOnly(['status'])
-            && validStatus(request.resource.data.status))
-        // Anyone signed in can follow / flag / confirm — only for themselves.
+            && changedKeys().hasOnly([
+                 'title', 'description', 'category', 'photoUrl', 'location', 'coords',
+                 'status', 'updatedAtMs'])
+            && validStatus(request.resource.data.status)
+            && validContent(request.resource.data))
+        // Anyone signed in can follow / flag — only for themselves.
         || (signedIn()
             && changedKeys().hasOnly(['followers'])
             && onlySelfChanged('followers'))
         || (signedIn()
             && changedKeys().hasOnly(['flaggedBy'])
             && onlySelfChanged('flaggedBy'))
+        // Neighbours (not the reporter) can confirm a closed report is fixed.
         || (signedIn()
             && changedKeys().hasOnly(['resolutionConfirmations'])
             && resource.data.status == 'Closed'
+            && resource.data.creatorId != request.auth.uid
             && onlySelfChanged('resolutionConfirmations'));
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.creatorId == request.auth.uid);
     }
 
     match /updates/{updateId} {
@@ -85,7 +107,11 @@ service cloud.firestore {
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 2000
         && (isAdmin()
-            || !get(/databases/$(database)/documents/reports/$(request.resource.data.reportId)).data.commentsLocked);
+            || !get(/databases/$(database)/documents/reports/$(request.resource.data.reportId)).data.commentsLocked)
+        // Only the reporter (or an admin) can post an official progress update.
+        && (request.resource.data.type == 'comment'
+            || isAdmin()
+            || get(/databases/$(database)/documents/reports/$(request.resource.data.reportId)).data.creatorId == request.auth.uid);
 
       allow update: if false;
       allow delete: if isAdmin();

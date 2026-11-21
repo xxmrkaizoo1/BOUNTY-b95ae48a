@@ -4,16 +4,14 @@ A lightweight community reporting tool where residents can report local issues, 
 
 ## Features
 
-- **Google sign-in (Firebase Auth)** with profile details, points, and badges.
-- **Create reports** with title, description, category, photo URL, and location.
-- **Public feed + detail pages** with status flow: Open → Acknowledged → In Progress → Closed.
-- **Follow system** with auto-follow on report creation.
-- **Gamification** (points + badges): First Report, Helper (5 updates/comments), Resolver (2 confirmed resolutions).
-- **Public updates/comments** with light rate limiting and community confirmations on closures.
-- **Search + filters** by status and category.
-- **Moderation tools**: flag reports, hide/unhide reports, lock comments, and admin dashboard view.
-- **Duplicate handling** (admin-only) to redirect reports.
-- **PWA ready** with manifest + service worker cache.
+- **Google sign-in (Firebase Auth)** with profile, points, levels, and badges with progress.
+- **Create & edit reports** with category picker, photo upload (compressed in the browser and stored on the report — no Firebase Storage needed), and GPS location with a map.
+- **Public feed** with search, status/category filters, sorting, and a "Following" view with **"N new" badges** for updates since your last visit.
+- **Report pages** with a status progress bar, comments showing author names, official progress updates (reporter/admin only), share link, and map.
+- **Status flow**: Open → Acknowledged → In Progress → Closed. Neighbours (not the reporter) confirm the fix.
+- **Moderation**: flag/unflag, admin dashboard with Flagged / Hidden / Locked tabs, dismiss flags, hide, lock comments, mark duplicates (linked to the original), delete.
+- **Owners** can edit or delete their own reports.
+- **Mobile-first PWA**: bottom tab bar, installable app icons, offline app shell.
 
 ## Setup
 
@@ -47,12 +45,17 @@ With no `.env`, the app runs in **demo mode** (mock users, data saved in localSt
 
 Admins can hide reports, lock comments, mark duplicates and change any report's status. After a user signs in once, open **Firestore → `users/{uid}`** in the console and change `role` from `member` to `admin`, then have them sign out/in. Users can't change their own role (enforced by the rules).
 
+### Sample data
+
+- **Demo mode** (no `.env`) starts with 13 example reports, 6 neighbours and comments. Reset or clear it in **Moderator HQ**.
+- **Firebase mode**: sign in as an admin and click **🧪 Load sample data** (on the empty feed or in **Moderator HQ**). Reports are posted as you and tagged **Sample**; **Remove sample data** deletes them all. Edit the content in `src/data/sampleData.ts`.
+
 ### Data model
 
 | Collection | Doc | Notes |
 |---|---|---|
 | `users/{uid}` | `name`, `avatar`, `role` | Created on first sign-in. |
-| `reports/{id}` | title, description, category, status, location, photoUrl, followers[], flaggedBy[], resolutionConfirmations[], hidden, commentsLocked, duplicateOf, createdAt, createdAtMs | Public read; writes validated in `firestore.rules`. |
+| `reports/{id}` | title, description, category, status, location, coords, photoUrl (data URL), followers[], flaggedBy[], resolutionConfirmations[], hidden, commentsLocked, duplicateOf, createdAt, createdAtMs | Public read; writes validated in `firestore.rules`. |
 | `updates/{id}` | reportId, userId, text, type (`comment`/`update`), createdAt, createdAtMs | Blocked when the report's comments are locked (except admins). |
 
 ### Deploy (optional)
