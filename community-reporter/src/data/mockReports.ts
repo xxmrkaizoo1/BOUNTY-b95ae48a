@@ -31,6 +31,7 @@ export type Report = {
   commentsLocked: boolean;
   duplicateOf?: string;
   resolutionConfirmations: string[];
+  createdAtMs?: number;
 };
 
 export type Update = {
@@ -40,6 +41,7 @@ export type Update = {
   text: string;
   createdAt: string;
   type: "update" | "comment";
+  createdAtMs?: number;
 };
 
 export const mockUsers: User[] = [

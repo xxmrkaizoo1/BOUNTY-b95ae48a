@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // The array only changed by adding/removing the caller's own uid.
+    function onlySelfChanged(field) {
+      let after = request.resource.data[field].toSet();
+      let before = resource.data[field].toSet();
+      return after.difference(before).hasOnly([request.auth.uid])
+        && before.difference(after).hasOnly([request.auth.uid]);
+    }
+
+    function validStatus(s) {
+      return s in ['Open', 'Acknowledged', 'In Progress', 'Closed'];
+    }
+
+    // Profiles. Role can only be changed from the Firebase console / Admin SDK.
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role == 'member';
+      allow update: if signedIn() && request.auth.uid == uid
+        && !changedKeys().hasAny(['role']);
+    }
+
+    match /reports/{reportId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.creatorId == request.auth.uid
+        && request.resource.data.status == 'Open'
+        && request.resource.data.hidden == false
+        && request.resource.data.commentsLocked == false
+        && request.resource.data.followers == [request.auth.uid]
+        && request.resource.data.flaggedBy == []
+        && request.resource.data.resolutionConfirmations == []
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 5000;
+
+      allow update: if isAdmin()
+        // Creator can move their report through the status flow.
+        || (signedIn()
+            && resource.data.creatorId == request.auth.uid
+            && changedKeys().hasOnly(['status'])
+            && validStatus(request.resource.data.status))
+        // Anyone signed in can follow / flag / confirm — only for themselves.
+        || (signedIn()
+            && changedKeys().hasOnly(['followers'])
+            && onlySelfChanged('followers'))
+        || (signedIn()
+            && changedKeys().hasOnly(['flaggedBy'])
+            && onlySelfChanged('flaggedBy'))
+        || (signedIn()
+            && changedKeys().hasOnly(['resolutionConfirmations'])
+            && resource.data.status == 'Closed'
+            && onlySelfChanged('resolutionConfirmations'));
+
+      allow delete: if isAdmin();
+    }
+
+    match /updates/{updateId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.type in ['comment', 'update']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000
+        && (isAdmin()
+            || !get(/databases/$(database)/documents/reports/$(request.resource.data.reportId)).data.commentsLocked);
+
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}

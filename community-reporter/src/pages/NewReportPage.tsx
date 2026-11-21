@@ -14,7 +14,7 @@ const CATEGORY_OPTIONS: ReportCategory[] = [
 
 export default function NewReportPage() {
   const nav = useNavigate();
-  const { createReport } = useAppState();
+  const { createReport, isAuthenticated, signIn } = useAppState();
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [category, setCategory] = useState<ReportCategory>("Road");
@@ -30,7 +30,26 @@ export default function NewReportPage() {
       photoUrl,
       location,
     });
-    nav(`/report/${report.id}`);
+    if (report) nav(`/report/${report.id}`);
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto max-w-3xl p-6">
+        <div className="rounded-2xl bg-white p-6 text-center shadow">
+          <h1 className="text-2xl font-bold">Sign in to report an issue</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Reports are linked to your account so you can follow progress and earn points.
+          </p>
+          <button
+            onClick={signIn}
+            className="mt-5 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+          >
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
